@@ -11,8 +11,11 @@ void Simulation::init(void)
     sf::CircleShape cs = sf::CircleShape(5);
     cs.setPosition({500, 700});
     env.addCircleO(cs, 0.25, true);
-    GreenCell first_cell = GreenCell({150, 150}, {10, 0}, {0, 0}, 1, 50, 50, 50, 1, 0.5, 2, {0, 0});
+    GreenCell first_cell = GreenCell({150, 150}, {10, 0}, {0, 0}, 1, 50, 80, 50, 1, 0.5, 2, {0, 0});
     env.addGCell(first_cell);
+
+    GreenCell second_cell = GreenCell({350, 150}, {10, 0}, {0, 0}, 1, 50, 90, 50, 1, 0.5, 2, {0, 0});
+    env.addGCell(second_cell);
 }
 
 void Simulation::pause(const sf::Event::KeyEvent &key)
@@ -100,17 +103,10 @@ void Simulation::run(void)
         if (!is_pause)
         {
             float dt = clock.restart().asSeconds();
-            sf::CircleShape control = sf::CircleShape(20);
-            control.setFillColor(sf::Color::Red);
-            control.setPosition({1000, 200});
 
             env.updatePhysics(dt);
             window.setView(window.getDefaultView());
-
-            env.drawOField(window);
             env.drawBodies(window);
-
-            window.draw(control);
         }
         else
         {

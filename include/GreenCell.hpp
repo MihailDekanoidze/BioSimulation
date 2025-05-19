@@ -7,7 +7,7 @@ class GreenCell : public Cell {
 private:
     const float enegry_consume = 1.0f;
     // Параметры случайного движения
-    float random_move_duration = 4.0f; // Длительность случайного движения (сек)
+    float random_move_duration = 5.0f; // Длительность случайного движения (сек)
     float random_move_timer = 0.0f;    // Таймер
     
     float energy_conversion = 0.7f;      // Коэффициент преобразования O2 -> energy
@@ -17,8 +17,8 @@ private:
 
 public:
     GreenCell(const sf::Vector2f& pos, const sf::Vector2f& vel, const sf::Vector2f& acr, float mass,
-             float radius, float spd, float eng, float shl,  float em, float dm, const sf::Vector2f& fr, sf::Vector2f rd = {1, 0})
-        : Cell(pos, vel, acr, mass, radius, spd, eng, shl, sf::Color::Green, O2, em, dm, rd, fr)
+             float radius, float mfr, float eng, float shl,  float em, float dm, const sf::Vector2f& fr, sf::Vector2f rd = {1, 0})
+        : Cell(pos, vel, acr, mass, radius, mfr, eng, shl, sf::Color::Green, O2, em, dm, rd, fr)
     {
         generateNewRandomDirection(); 
         consumption_radius = radius;
@@ -33,7 +33,8 @@ public:
     {
     }
     bool update(float dt, Field& O2_field, Field& H2_field,
-                Field& C_field, Field& N2_field) override;
+                Field& C_field, Field& N2_field, std::vector<std::shared_ptr<Body>>& bodies) override;
+    bool tryDivide(std::vector<std::shared_ptr<Body>>& bodies) override;
 
 private:
     void generateNewRandomDirection();

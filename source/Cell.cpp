@@ -1,4 +1,6 @@
 #include "../include/Cell.hpp"
+#include "../include/Parameters.hpp"
+#include <cmath>
 
 sf::Vector2f &Body::getPosition()
 {
@@ -15,8 +17,22 @@ float Body::getMass() const
 
 void Cell::draw(sf::RenderWindow &window)
 {
-    LOG("Velocity " << this->velocity.x << " " << this->velocity.y);
+    // LOG("Velocity " << this->velocity.x << " " << this->velocity.y);
     window.draw(shape);
+}
+
+void Cell::setDir(const sf::Vector2f dir)
+{
+    LOG("Changing dir from " << direction.x << " " << direction.y << " to " << dir.x << " " << dir.y);
+    if (Abs(dir.x) < epsilon && Abs(dir.y) < epsilon)
+    {
+        direction = sf::Vector2f(1, 0);
+    }
+    else
+    {
+        direction = dir / static_cast<float>(hypot(dir.x, dir.y));
+    }
+    LOG("Now direction " << direction.x << " " << direction.y);
 }
 
 void Cell::initializeCheckPoints(float sensorRadius)
@@ -47,7 +63,7 @@ void Cell::info(void)
                             << " with Color " << static_cast<unsigned>(shape.getFillColor().r)
                             << static_cast<unsigned>(shape.getFillColor().g)
                             << static_cast<unsigned>(shape.getFillColor().b));
-    LOG("Cell properties - Speed: " << speed << " Energy: " << energy << " Shell: " << shell);
+    LOG("Cell properties - force: " << max_force << " Energy: " << energy << " Shell: " << shell);
 }
 
 /*void Cell::updatePosterity(void){
@@ -60,27 +76,23 @@ void Cell::info(void)
 
 // ... остальной код
 
-void Cell::updateBasic(float dt)
+bool Cell::updateBasic(float dt, std::vector<std::shared_ptr<Body>> &bodies)
 {
     // Применяем ускорение
+    this->setOwnForce();
+
     if (mass > 0)
     {
         acceleration = force / mass;
+        // LOG("Acceleration " << acceleration.x << " " << acceleration.y);
     }
     else
     {
         acceleration = {0, 0}; // Защита от деления на ноль
     }
     velocity += acceleration * dt;
+    // LOG("Velocity " << velocity.x << " " << velocity.y);
 
-    // Ограничение скорости
-    float current_speed = std::hypot(velocity.x, velocity.y);
-    if (current_speed > 0 && current_speed > speed)
-    {
-        velocity = (velocity / current_speed) * speed;
-    }
-
-    // Обновление позиции
     position += velocity * dt;
     shape.setPosition(position);
 
@@ -89,23 +101,90 @@ void Cell::updateBasic(float dt)
 
     // Обработка границ
     sf::Vector2f pos = position;
+    bool is_overwent = false;
     if (pos.x < 7 || pos.x > width - 17 - shape.getRadius())
     {
         velocity.x *= -1;
         acceleration.x *= -1;
+        is_overwent = true;
     }
     if (pos.y < 7 || pos.y > height - y_offset - shape.getRadius())
     {
         velocity.y *= -1;
         acceleration.y *= -1;
+        is_overwent = true;
     }
+    if (is_overwent)
+        this->setDir(-getDir());
+
+    static float divide_timer = 0.0f;
+    divide_timer += dt;
+    if (is_divided)
+    {
+        if (divide_timer >= divide_cooldown)
+        {
+            if (tryDivide(bodies))
+            {
+                divide_timer = 0.0f;
+                is_divided = true;
+            }
+        }
+    }
+    else
+    {
+        if (divide_timer >= initial_div_time)
+        {
+            if (tryDivide(bodies))
+            {
+                divide_timer = 0.0f;
+            }
+        }
+    }
+
+    return is_overwent;
 }
 
-void Cell::setTargetVelocity(const sf::Vector2f &target_vel)
+void Cell::setOwnForce(void)
 {
     if (mass > 0)
     {
-        sf::Vector2f desired_force = mass * (target_vel - velocity);
-        applyForce(desired_force);
+        sf::Vector2f normal_vel = velocity / static_cast<float>(hypot(velocity.x, velocity.y));
+        sf::Vector2f normal_dir = direction / static_cast<float>(hypot(direction.x, direction.y));
+
+        // LOG("normal_vel " << normal_vel.x << " " << normal_vel.y);
+        // LOG("normal_dir " << normal_dir.x << " " << normal_dir.y);
+
+        if (Abs(normal_dir.x - normal_vel.x) < veldir_accuraty && Abs(normal_dir.y - normal_vel.x) < veldir_accuraty)
+        {
+            this->addForce(max_force * normal_dir);
+            // LOG("\n Go streight");
+        }
+        else
+        {
+            sf::Vector2f force_vec = normal_dir - normal_vel;
+            // LOG("Force direction " << force_vec.x << " " << force_vec.y);
+            force_vec = force_vec / static_cast<float>(hypot(force_vec.x, force_vec.y));
+            // LOG("Normal force direction " << force_vec.x << " " << force_vec.y);
+
+            this->addForce(max_force * force_vec);
+            // LOG("Added " << max_force * force_vec.x << " " << max_force * force_vec.y);
+            // LOG("\n Chaning dir");
+        }
     }
+}
+
+bool Cell::isPositionFree(const sf::Vector2f &pos, float radius, const std::vector<std::shared_ptr<Body>> &bodies)
+{
+    for (const auto &body : bodies)
+    {
+        if (auto cell = dynamic_cast<Cell *>(body.get()))
+        {
+            float distance = std::hypot(cell->getPosition().x - pos.x, cell->getPosition().y - pos.y);
+            if (distance < (radius + cell->getRaduis()))
+            {
+                return false;
+            }
+        }
+    }
+    return true;
 }

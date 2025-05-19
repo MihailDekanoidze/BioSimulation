@@ -6,6 +6,7 @@
 #include <fstream>
 #include <vector>
 #include <memory>
+#include <random>
 
 enum Field_types{
     O2 = 0,
@@ -21,19 +22,20 @@ private:
     struct PixelData
     {
         float value;          // 0-100+: 0 - черный, 100 - полная яркость базового цвета
-        sf::Color base_color; // Цвет при значении 100
     };
+    sf::Color base_color; // Цвет при значении 100
 
     std::vector<std::vector<PixelData>> grid;
     sf::RenderTexture field_texture;
     sf::Sprite field_sprite;
     unsigned width;
     unsigned height;
+    std::mt19937 rng{std::random_device{}()};
 
 public:
     // Конструктор для равномерного заполнения
     Field(unsigned w, unsigned h, float init_value, const sf::Color &base_color)
-        : grid(w, std::vector<PixelData>(h)), width(w), height(h)
+        : grid(w, std::vector<PixelData>(h)), width(w), height(h), base_color(base_color)
     {
         field_texture.create(width, height);
 
@@ -43,7 +45,6 @@ public:
             for (auto &pixel : row)
             {
                 pixel.value = init_value;
-                pixel.base_color = base_color;
             }
         }
     }
@@ -68,4 +69,13 @@ public:
     sf::Vector2f findLocalMax(const sf::Vector2f& center, float radius) const;
         // Уменьшает значение в позиции (x,y) на указанную величину. Возвращает фактически потребленное значение
     float consumeValueAt(const sf::Vector2f& pos, float amount);
+    void setValueAt(size_t x, size_t y, float val){
+        if (val < 0) return;
+
+        x = static_cast<int>(x);
+        y = static_cast<int>(y);
+        if (!(x < 0 || x >= width || y < 0 || y >= height))
+            grid[x][y].value = val;
+    }
+    void setRandomPattern(void);
 };

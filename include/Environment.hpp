@@ -1,5 +1,6 @@
 #pragma once
 #include "Parameters.hpp"
+
 #include "Cell.hpp"
 #include "Field.hpp"
 #include <algorithm>
@@ -11,6 +12,7 @@
 #include "GreenCell.hpp"
 #include <algorithm> // для std::clamp
 
+//using namespace std;
 
 class Environment : virtual protected Log
 {
@@ -21,6 +23,7 @@ private:
     Field O2_field;
     Field N2_field;
     Field C_field;
+    float friction_coefficient;
 
 public:
     /*Environment(sf::Vector2f gr, std::vector<Body>& objects):
@@ -28,8 +31,9 @@ public:
         H2_field(0, H2_color), O2_field(0, O2_color), N2_field(0, N2_color), C_field(0, C_color){}*/
     Environment()
         : gravity(), bodies(), H2_field(width, height, 0, H2_color), O2_field(width, height, 0, O2_color),
-          N2_field(width, height, 0, N2_color), C_field(width, height, 0, C_color), Log()
+          N2_field(width, height, 0, N2_color), C_field(width, height, 0, C_color), friction_coefficient(0.05), Log()
     {
+        O2_field.setRandomPattern();
     }
     // Environment(std::vector<Body>& objects):Environment(sf::Vector2f(0, 0), objects){}
     ~Environment() {};
@@ -52,9 +56,8 @@ public:
     }
     void drawBodies(sf::RenderWindow &window)
     {
-        for (auto it = bodies.begin(); it != bodies.end(); ++it)
-        {
-            (*it)->draw(window);
+        for (const auto& body : bodies) { // Использовать range-based for
+            body->draw(window);
         }
     }
     void addCircleH(const sf::CircleShape &area, float value, bool additive = false)
@@ -79,6 +82,13 @@ public:
     {
         gravity = new_gravity;
     }
+    void addBody(std::shared_ptr<Body>& body) {
+        bodies.push_back(body);
+    }
 
     void removeLowEnergyCells();
+    bool checkCollision(Cell& a, Cell& b) const;
+    void handleElasticCollision(Cell& a, Cell& b);
+    void applyViscousFriction(Cell& a); 
+    bool isPositionFree(const sf::Vector2f& pos, float radius) const;
 };

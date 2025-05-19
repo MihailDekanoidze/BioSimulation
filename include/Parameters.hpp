@@ -1,10 +1,13 @@
-#pragma once
+#ifndef PARAM
+#define PARAM
+
 #include <SFML/Graphics.hpp>
 #include <fstream>
 #include <iostream>
 
 #define LOG(string) log_file << string << std::endl; \
         log_file.flush()
+
 
 const unsigned int width = 1920;
 const unsigned int height = 1080;
@@ -13,7 +16,10 @@ const unsigned int x_offset = 50;
 const unsigned int y_offset = 100;
 
 const float capacity = 100.0f;
-const float epsilon = 0.00001f;
+const float epsilon = 0.001f;
+const float veldir_accuraty = .1f;
+const float pattern_radius = 50.f;
+const float default_pattern_value = 5.f;
 
 const sf::Color H2_color = sf::Color(255, 102, 178);
 const sf::Color N2_color = sf::Color(0, 255, 128);
@@ -42,3 +48,7 @@ protected:
     }
 };
 
+
+float Abs(float x);
+
+#endif
