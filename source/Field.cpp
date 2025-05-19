@@ -1,4 +1,6 @@
 #include "../include/Field.hpp"
+#include <random>
+#include <vector>
 
 void Field::render(sf::RenderWindow &window)
 {
@@ -14,10 +16,10 @@ void Field::render(sf::RenderWindow &window)
             const auto &pixel = grid[x][y];
 
             // Рассчитываем яркость (0.0-1.0)
-            float brightness = std::clamp(pixel.value * 100, 0.0f, 1.0f);
+            float brightness = std::clamp(pixel.value, 0.0f, 1.0f);
 
             // Применяем яркость к базовому цвету
-            sf::Color final_color = pixel.base_color;
+            sf::Color final_color = base_color;
             final_color.r = static_cast<sf::Uint8>(final_color.r * brightness);
             final_color.g = static_cast<sf::Uint8>(final_color.g * brightness);
             final_color.b = static_cast<sf::Uint8>(final_color.b * brightness);
@@ -65,13 +67,7 @@ void Field::applyCircularArea(const sf::CircleShape &area, float value, bool add
 
 void Field::setBaseColor(const sf::Color &new_color)
 {
-    for (auto &row : grid)
-    {
-        for (auto &pixel : row)
-        {
-            pixel.base_color = new_color;
-        }
-    }
+    base_color = new_color;
 }
 
 void Field::setUniformValue(float new_value)
@@ -131,10 +127,7 @@ float Field::consumeValueAt(const sf::Vector2f &pos, float amount)
 
     float consumed = std::min(grid[x][y].value, amount);
     grid[x][y].value -= consumed;
-    if (consumed > 0)
-    {
-        // LOG("Field give from " << x << " " << y);
-    }
+
     return consumed;
 }
 
@@ -155,4 +148,17 @@ float Field::getValue(const sf::Vector2f &pos) const
     if (pos.x < 0 || pos.y < 0 || static_cast<unsigned>(pos.x) > width || static_cast<unsigned>(pos.y) >= height)
         return 0;
     return grid[static_cast<unsigned>(pos.x)][static_cast<unsigned>(pos.y)].value;
+}
+
+void Field::setRandomPattern(void)
+{
+    std::uniform_int_distribution<int> dist2(5, 20);
+    size_t count = dist2(rng);
+    std::uniform_real_distribution<float> dist1(pattern_radius + y_offset, height - pattern_radius - y_offset);
+    for (size_t i = 0; i < count; i++)
+    {
+        sf::CircleShape area = sf::CircleShape(pattern_radius);
+        area.setPosition((width - height) / 2 + dist1(rng), dist1(rng));
+        this->applyCircularArea(area, default_pattern_value);
+    }
 }

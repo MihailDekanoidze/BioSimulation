@@ -1,6 +1,7 @@
 #include "../include/GreenCell.hpp"
 
-bool GreenCell::update(float dt, Field &O2_field, Field &H2_field, Field &C_field, Field &N2_field)
+bool GreenCell::update(float dt, Field &O2_field, Field &H2_field, Field &C_field, Field &N2_field,
+                       std::vector<std::shared_ptr<Body>> &bodies)
 {
     // Расчет градиента O2
     sf::Vector2f grad = calculateO2Gradient(O2_field);
@@ -12,13 +13,15 @@ bool GreenCell::update(float dt, Field &O2_field, Field &H2_field, Field &C_fiel
         {
             generateNewRandomDirection();
             random_move_timer = random_move_duration;
+            LOG("Generated dir " << direction.x << " " << direction.y);
         }
-        setTargetVelocity(random_direction * speed);
         random_move_timer -= dt;
+        LOG("Rand timer" << random_move_timer);
     }
     else
     {
-        setTargetVelocity(grad * speed);
+        LOG("Gradient direction " << grad.x << " " << grad.y);
+        setDir(grad);
         random_move_timer = 0.0f;
     }
 
@@ -37,17 +40,15 @@ bool GreenCell::update(float dt, Field &O2_field, Field &H2_field, Field &C_fiel
 
     shell = std::max(0.0f, shell - 0.05f * dt);
     updateColor();
-    this->updateBasic(dt);
+    if (this->updateBasic(dt, bodies))
+        random_move_timer = random_move_duration;
     return true;
 }
 
 void GreenCell::generateNewRandomDirection()
 {
     std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-    random_direction = sf::Vector2f(dist(rng), dist(rng));
-    float length = std::hypot(random_direction.x, random_direction.y);
-    if (length > 0)
-        random_direction /= length;
+    setDir(sf::Vector2f(dist(rng), dist(rng)));
 }
 
 sf::Vector2f GreenCell::calculateO2Gradient(const Field &O2_field)
@@ -80,9 +81,38 @@ float GreenCell::consumeO2(Field &O2_field, float dt)
         for (int dy = -consumption_radius; dy <= consumption_radius; ++dy)
         {
             const sf::Vector2f target = center + sf::Vector2f(dx, dy);
-            // LOG("target : " << target.x << " " << target.y);
-            total_consumed += O2_field.consumeValueAt(target, request);
+            if (!(target.x < 0 || target.x >= width || target.y < 0 || target.y >= height))
+                total_consumed += O2_field.consumeValueAt(target, request);
         }
     }
     return total_consumed;
+}
+
+bool GreenCell::tryDivide(std::vector<std::shared_ptr<Body>> &bodies)
+{
+    if (energy < divide_energy_threshold)
+        return false;
+
+    // Генерация направления деления
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> angle_dist(0.0f, 2.0f * 3.14159f);
+    float angle = angle_dist(gen);
+    sf::Vector2f dir(std::cos(angle), std::sin(angle));
+    sf::Vector2f new_pos = position + dir * (getRaduis() * 2.5f);
+
+    // Проверка позиции
+    if (!isPositionFree(new_pos, getRaduis(), bodies))
+        return false;
+
+    // Создаем новую клетку как GreenCell
+    GreenCell *new_green_cell = new GreenCell(*this); // Используем копирующий конструктор GreenCell
+    new_green_cell->is_divided = false;
+    new_green_cell->setPosition(new_pos);
+    new_green_cell->setEnergy(energy * 0.5f);
+    new_green_cell->setVelocity({1, 0}); // Начальная скорость
+
+    this->energy *= 0.5f;
+    bodies.push_back(std::shared_ptr<Body>(new_green_cell));
+    return true;
 }

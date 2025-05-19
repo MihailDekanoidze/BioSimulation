@@ -34,7 +34,7 @@ all: check-style format $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
 	@echo "Linking $@..."
-	@$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	@$(CXX) $(CXXFLAGS) -pg -o $@ $^ $(LDFLAGS)
 	@echo "Build completed successfully!"
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
